@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <title>Relatório Disparos por Data</title>
+  <style>
+      /* Fonte e cores principais */
+    @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+
+    body {
+      font-family: 'Poppins', sans-serif;
+      background-color: #121212;
+      color: #e0e0e0;
+      margin: 0;
+      padding: 20px;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    h1 {
+      font-weight: 600;
+      font-size: 2rem;
+      text-align: center;
+      margin-bottom: 30px;
+      color: #4CAF50;
+    }
+
+    /* Controles (select e botão) */
+    #controls {
+      max-width: 800px;
+      margin: 0 auto 30px;
+      display: flex;
+      justify-content: center;
+      gap: 15px;
+      flex-wrap: wrap;
+    }
+
+    select, button {
+      font-family: 'Poppins', sans-serif;
+      font-weight: 500;
+      font-size: 0.9rem;
+      padding: 10px 15px;
+      border-radius: 6px;
+      border: 1px solid #333;
+      background-color: #1e1e1e;
+      color: #e0e0e0;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    select {
+      min-width: 200px;
+    }
+
+    select:hover, select:focus {
+      border-color: #4CAF50;
+      box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.3);
+      outline: none;
+    }
+
+    button {
+      background-color: #2E7D32;
+      color: white;
+      border: none;
+    }
+
+    button:hover, button:focus {
+      background-color: #4CAF50;
+      box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.3);
+      outline: none;
+    }
+
+    /* Tabela */
+    table {
+      width: 100%;
+      max-width: 1000px;
+      margin: 0 auto 20px;
+      border-collapse: collapse;
+      box-shadow: 0 2px 15px rgba(76, 175, 80, 0.1);
+      border-radius: 8px;
+      overflow: hidden;
+      background-color: #1e1e1e;
+    }
+
+    th, td {
+      padding: 12px 15px;
+      text-align: left;
+      border-bottom: 1px solid #333;
+    }
+
+    th {
+      background-color: #2E7D32;
+      color: white;
+      font-weight: 600;
+    }
+
+    tr:last-child td {
+      border-bottom: none;
+    }
+
+    tr:hover td {
+      background-color: #2d2d2d;
+    }
+
+    /* Mensagens de loading e empty */
+    .loading, .empty {
+      text-align: center;
+      font-size: 1.1rem;
+      font-weight: 500;
+      color: #4CAF50;
+      margin-top: 40px;
+    }
+
+    /* Total geral */
+    #conteudo > div {
+      max-width: 1000px;
+      margin: 20px auto 0;
+      font-weight: 600;
+      font-size: 1.1rem;
+      text-align: right;
+      color: #4CAF50;
+      padding: 10px 15px;
+      background-color: #1e1e1e;
+      border-radius: 6px;
+      border: 1px solid #333;
+    }
+
+    /* Responsividade */
+    @media (max-width: 768px) {
+      #controls {
+        flex-direction: column;
+        align-items: center;
+      }
+      
+      select, button {
+        width: 100%;
+        max-width: 300px;
+      }
+      
+      th, td {
+        padding: 10px 12px;
+        font-size: 0.9rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <h1>Relatório de Disparos</h1>
+
+  <div id="controls">
+    <select id="selectData">
+      <option value="" disabled selected>Carregando datas...</option>
+    </select>
+    <button id="btnAtualizar">Atualizar</button>
+  </div>
+
+  <div id="conteudo"></div>
+
+  <script>
+    async function carregarDatas() {
+      const select = document.getElementById('selectData');
+      select.innerHTML = '<option value="" disabled selected>Carregando datas...</option>';
+
+      try {
+        const res = await fetch('/datas');
+        const datas = await res.json();
+
+        if (!datas.length) {
+          select.innerHTML = '<option value="" disabled>Sem datas disponíveis</option>';
+          return;
+        }
+
+        select.innerHTML = '<option value="" disabled selected>Selecione uma data</option>';
+        datas.forEach(data => {
+          const option = document.createElement('option');
+          option.value = data;
+          option.textContent = data;
+          select.appendChild(option);
+        });
+      } catch {
+        select.innerHTML = '<option value="" disabled>Erro ao carregar datas</option>';
+      }
+    }
+
+async function carregarDadosPorData(data) {
+  const conteudo = document.getElementById('conteudo');
+  conteudo.innerHTML = '<p class="loading">Carregando dados...</p>';
+
+  try {
+    const res = await fetch(`/dados?data=${data}`);
+    if (!res.ok) throw new Error('Dados não encontrados');
+    const resposta = await res.json();
+
+    const registros = resposta.agrupado;
+
+    if (!Object.keys(registros).length) {
+      conteudo.innerHTML = '<p class="empty">Nenhum dado para essa data.</p>';
+      return;
+    }
+
+    const registros3636 = {};
+    const registros2611 = {};
+    const registros6333 = {};
+    let total3636 = 0;
+    let total2611 = 0;
+    let total6333 = 0;
+
+    Object.keys(registros).forEach(hora => {
+      Object.entries(registros[hora]).forEach(([origem, qtd]) => {
+        const match = origem.match(/(\d{4})\s*\d*\.csv$/i);
+        const final = match ? match[1] : null;
+
+        if (final === '3636') {
+          if (!registros3636[origem]) registros3636[origem] = 0;
+          registros3636[origem] += qtd;
+          total3636 += qtd;
+        } else if (final === '2611') {
+          if (!registros2611[origem]) registros2611[origem] = 0;
+          registros2611[origem] += qtd;
+          total2611 += qtd;
+        } else if (final === '6333') {
+          if (!registros6333[origem]) registros6333[origem] = 0;
+          registros6333[origem] += qtd;
+          total6333 += qtd;
+        } 
+      });
+    });
+
+    function criarTabela(titulo, registros, total) {
+      const container = document.createElement('div');
+      container.innerHTML = `<h2 style="color: #4CAF50; text-align: center; margin-top: 40px;">${titulo}</h2>`;
+
+      const tabela = document.createElement('table');
+      tabela.innerHTML = `
+        <tr>
+          <th>Origem</th>
+          <th>Quantidade</th>
+        </tr>
+      `;
+
+      Object.keys(registros).sort().forEach(origem => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${origem}</td>
+          <td>${registros[origem]}</td>
+        `;
+        tabela.appendChild(tr);
+      });
+
+      container.appendChild(tabela);
+
+      const totalLinha = document.createElement('div');
+      totalLinha.style.textAlign = 'right';
+      totalLinha.style.color = '#4CAF50';
+      totalLinha.style.fontWeight = 'bold';
+      totalLinha.style.marginTop = '8px';
+      totalLinha.textContent = `Total: ${total}`;
+      container.appendChild(totalLinha);
+
+      return container;
+    }
+
+    conteudo.innerHTML = '';
+
+     if (Object.keys(registros2611).length > 0)
+      conteudo.appendChild(criarTabela('Número 2611', registros2611, total2611));
+
+    if (Object.keys(registros3636).length > 0)
+      conteudo.appendChild(criarTabela('Número 3636', registros3636, total3636));
+
+    if (Object.keys(registros6333).length > 0)
+      conteudo.appendChild(criarTabela('Número 6333', registros6333, total6333));
+
+    const totalDiv = document.createElement('div');
+    totalDiv.style.fontWeight = 'bold';
+    totalDiv.style.fontSize = '18px';
+    totalDiv.style.marginTop = '20px';
+    totalDiv.textContent = `Total geral: ${total3636 + total2611 + total6333}`;
+    conteudo.appendChild(totalDiv);
+
+  } catch {
+    conteudo.innerHTML = '<p class="empty">Erro ao carregar dados.</p>';
+  }
+}
+
+    document.getElementById('selectData').addEventListener('change', e => {
+      carregarDadosPorData(e.target.value);
+    });
+
+    document.getElementById('btnAtualizar').addEventListener('click', () => {
+      carregarDatas();
+      document.getElementById('conteudo').innerHTML = '';
+    });
+
+    // Carrega a lista de datas ao abrir a página
+    carregarDatas();
+  </script>
+</body>
+</html>
